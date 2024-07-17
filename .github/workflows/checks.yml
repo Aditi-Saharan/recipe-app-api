@@ -1,20 +1,38 @@
 ---
+# GitHub Action Workflow enforcing our code style.
+
 name: Checks
-on: [push]
+
+# Trigger the workflow on both push (to the main repository, on the main branch)
+# and pull requests (against the main repository, but from any repo, from any branch).
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+# Brand new concurrency setting! This ensures that not more than one run can be triggered for the same commit.
+# It is useful for pull requests coming from the main repository since both triggers will match.
+concurrency: lint-${{ github.sha }}
+
 jobs:
-  test-lint:
-    name: Test and Lint
-    runs-on: ubuntu-20.04
+  lint:
+    runs-on: ubuntu-latest
+
+    env:
+      # The Python version your project uses. Feel free to change this if required.
+      PYTHON_VERSION: "3.11"
+
     steps:
-      - name: Login to Github
-        uses: docker/login-action@v1
+      # Checks out the repository in the current folder.
+      - name: Checks out repository
+        uses: actions/checkout@v3
+
+      # Set up the right version of Python
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Test
-        run: docker-compose run --rm app sh -c "python manage.py test"
-      - name: Lint
-        run: docker-compose run --rm app sh -c "flake8"
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run pre-commit hooks
+        uses: pre-commit/action@v3.0.0
 
